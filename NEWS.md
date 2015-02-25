@@ -8,6 +8,8 @@ Unversioned
     the ``@addConstraint`` macro to add them to the model, or in the ``@LinearConstraint`` macro to create a stand-alone linear constraint instance.
   * ``getValue()`` method implemented to compute the value of a nonlinear subexpression
   * JuMP is now released under the Mozilla Public License version 2.0 (was previously LGPL). MPL is a copyleft license which is less restrictive than LGPL, especially for embedding JuMP within other applications.
+  * Support for vectorized operations on Variables, expressions, and JuMPArrays with indexing over unit ranges starting at one. See
+    the documentation for details.
 
 Version 0.8.0 (February 17, 2015)
 ---------------------------------
