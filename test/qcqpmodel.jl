@@ -139,21 +139,21 @@ context("With solver $(typeof(solver))") do
     @fact modQ.objVal => roughly(sqrt(1/2), 1e-6)
     @fact norm([getValue(x), getValue(y), getValue(t)] - [0.5,0.5,sqrt(1/2)]) => roughly(0.0,1e-3)
 
-    # # Vectorized version
-    # modV = Model(solver=solver)
-    # @defVar(modV, x)
-    # @defVar(modV, y)
-    # @defVar(modV, t >= 0)
-    # @setObjective(modV, Min, t)
-    # @addConstraint(modV, [1 1 0]*[x,y,t] .>= 1)
-    # Q = [1 0  0
-    #      0 1  0
-    #      0 0 -1]
-    # @addConstraint(modV, [x y t]*Q*[x,y,t] .<= 0)
+    # Vectorized version
+    modV = Model(solver=solver)
+    @defVar(modV, x)
+    @defVar(modV, y)
+    @defVar(modV, t >= 0)
+    @setObjective(modV, Min, t)
+    @addConstraint(modV, [1 1 0]*[x,y,t] .>= 1)
+    Q = [1 0  0
+         0 1  0
+         0 0 -1]
+    @addConstraint(modV, [x y t]*Q*[x,y,t] .<= 0)
 
-    # @fact solve(modV) => :Optimal
-    # @fact modV.objVal => roughly(sqrt(1/2), 1e-6)
-    # @fact norm([getValue(x), getValue(y), getValue(t)] - [0.5,0.5,sqrt(1/2)]) => roughly(0.0,1e-3)
+    @fact solve(modV) => :Optimal
+    @fact modV.objVal => roughly(sqrt(1/2), 1e-6)
+    @fact norm([getValue(x), getValue(y), getValue(t)] - [0.5,0.5,sqrt(1/2)]) => roughly(0.0,1e-3)
 
 end; end; end
 

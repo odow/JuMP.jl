@@ -360,31 +360,6 @@ function multiply!(ret::Array{QuadExpr}, lhs, rhs)
     return ret
 end
 
-# function multiply!(ret::Array{QuadExpr}, A, x)
-#     m, n = size(A,1), size(A,2)
-#     for i in 1:m
-#         q = QuadExpr()
-#         sizehint!(q.qvars2, n)
-#         sizehint!(q.qvars2, n)
-#         sizehint!(q.qcoeffs, n)
-#         sizehint!(q.aff.vars, n)
-#         sizehint!(q.aff.coeffs, n)
-#         for j in 1:n
-#             if !_iszero(A[i,j])
-#                 tmp = convert(QuadExpr, A[i,j]*x[j])
-#                 append!(q.qvars1, tmp.qvars1)
-#                 append!(q.qvars2, tmp.qvars2)
-#                 append!(q.qcoeffs, tmp.qcoeffs)
-#                 append!(q.aff.coeffs, tmp.aff.coeffs)
-#                 append!(q.aff.vars, tmp.aff.vars)
-#                 q.aff.constant += tmp.aff.constant
-#             end
-#         end
-#         ret[i] = q
-#     end
-#     return ret
-# end
-
 typealias JuMPTypes Union(Variable,AffExpr,QuadExpr)
 
 (*)(lhs::AbstractArray, rhs::OneIndexedArray) = (*)(full(lhs), rhs.innerArray)
@@ -392,54 +367,37 @@ typealias JuMPTypes Union(Variable,AffExpr,QuadExpr)
 (*){T<:JuMPTypes}(lhs::SparseMatrixCSC, rhs::Array{T}) = (*)(full(lhs),rhs)
 (*){T<:JuMPTypes}(lhs::Array{T}, rhs::SparseMatrixCSC) = (*)(lhs,full(rhs))
 
-function (*){T,R<:JuMPTypes}(A::Array{T,2}, x::Array{R,1})
-    m, n = size(A,1), size(A,2)
-    n == size(x,1) || error("Incompatible sizes for matrix multiplication")
-    Q = promote_type(R,AffExpr) # since we don't have one(::Variable)...
-    ret = Array(Q, m)
-    multiply!(ret, A, x)
-    return ret
-end
-function (*){T,R<:JuMPTypes}(A::Array{T,2}, x::Array{R,2})
+function return_array{R,S}(A::Array{R}, x::Array{S,1})
+    Q = (R <: JuMPTypes && S <: JuMPTypes) ? QuadExpr : AffExpr
     m, n = size(A,1), size(A,2)
     r, s = size(x,1), size(x,2)
     n == r || error("Incompatible sizes for matrix multiplication")
-    Q = promote_type(R,AffExpr) # since we don't have one(::Variable)...
-    ret = Array(Q, m, s)
+    return Array(Q, m)
+end
+
+function return_array{R,S}(A::Array{R}, x::Array{S,2})
+    Q = (R <: JuMPTypes && S <: JuMPTypes) ? QuadExpr : AffExpr
+    m, n = size(A,1), size(A,2)
+    r, s = size(x,1), size(x,2)
+    n == r || error("Incompatible sizes for matrix multiplication")
+    return Array(Q, m, s)
+end
+
+function (*){T<:JuMPTypes,R}(A::Array{T}, x::Array{R})
+    ret = return_array(A, x)
     multiply!(ret, A, x)
     return ret
 end
 
-function (*){T<:JuMPTypes,R<:JuMPTypes}(A::Array{T,2}, x::Array{R,1})
-    m, n = size(A,1), size(A,2)
-    n == size(x,1) || error("Incompatible sizes for matrix multiplication")
-    ret = Array(QuadExpr, m)
-    multiply!(ret, A, x)
-    return ret
-end
-function (*){T<:JuMPTypes,R<:JuMPTypes}(A::Array{T,2}, x::Array{R,2})
-    m, n = size(A,1), size(A,2)
-    r, s = size(x,1), size(x,2)
-    n == r || error("Incompatible sizes for matrix multiplication")
-    ret = Array(QuadExpr, m, s)
+function (*){T<:JuMPTypes,R<:JuMPTypes}(A::Array{T}, x::Array{R})
+    (T == QuadExpr || R == QuadExpr) && error("Cannot multiply two arrays of QuadExpr")
+    ret = return_array(A, x)
     multiply!(ret, A, x)
     return ret
 end
 
-function (*){T,R<:JuMPTypes}(A::Array{R,2}, x::Array{T,1})
-    m, n = size(A,1), size(A,2)
-    n == size(x,1) || error("Incompatible sizes for matrix multiplication")
-    Q = promote_type(R,AffExpr) # since we don't have one(::Variable)...
-    ret = Array(Q, m)
-    multiply!(ret, A, x)
-    return ret
-end
-function (*){T,R<:JuMPTypes}(A::Array{R,2}, x::Array{T,2})
-    m, n = size(A,1), size(A,2)
-    r, s = size(x,1), size(x,2)
-    n == r || error("Incompatible sizes for matrix multiplication")
-    Q = promote_type(R,AffExpr) # since we don't have one(::Variable)...
-    ret = Array(Q, m, s)
+function (*){T,R<:JuMPTypes}(A::Array{T}, x::Array{R})
+    ret = return_array(A, x)
     multiply!(ret, A, x)
     return ret
 end
@@ -450,8 +408,6 @@ for op in [:+, :-, :*]
         $op{T<:JuMPTypes}(lhs::Array{T},rhs::Real) = map(c->$op(c,rhs), lhs)
         $op(lhs::Real,rhs::OneIndexedArray) = $op(lhs, rhs.innerArray)
         $op(lhs::OneIndexedArray,rhs::Real) = $op(lhs.innerArray, rhs)
-        # $op{T<:JuMPTypes,S<:JuMPTypes}(lhs::T,rhs::Array{S}) = error()
-        # $op{T<:JuMPTypes,S<:JuMPTypes}(lhs::Array{T},rhs::S) = error()
 
         $op{T<:JuMPTypes,N}(lhs::Array{T,N},rhs::OneIndexedArray) = $op(lhs,rhs.innerArray)
         $op{T<:JuMPTypes,N}(lhs::OneIndexedArray,rhs::Array{T,N}) = $op(lhs.innerArray,rhs)
@@ -461,7 +417,6 @@ end
 
 (/){T<:JuMPTypes}(lhs::Array{T},rhs::Real) = map(c->$op(c,rhs), lhs)
 (/)(lhs::OneIndexedArray,rhs::Real) = $op(lhs.innerArray, rhs)
-# (/){T<:JuMPTypes,S<:JuMPTypes}(lhs::Array{T},rhs::S) = error()
 
 for (dotop,op) in [(:.+,:+), (:.-,:-), (:.*,:*), (:./,:+)]
     @eval begin
@@ -485,28 +440,6 @@ end
 (-)(x::OneIndexedArray) = -x.innerArray
 (*){T<:JuMPTypes}(x::Array{T}) = x
 (*)(x::OneIndexedArray) = x.innerArray
-
-
-#############################################################################
-# JuMPDict comparison operators (all errors)
-
-# for sgn in (:<=, :(==), :>=)
-#     @eval begin
-#         function $sgn{T<:JuMPTypes,S<:JuMPTypes}(lhs::Vector{T},rhs::Vector{S})
-#             (N = length(lhs)) == length(rhs) || error("Unequal lengths in constraint")
-#             return map(1:N) do k
-#                 $sgn(lhs[k],rhs[k])
-#             end
-#         end
-#         $sgn{T<:JuMPTypes,R<:Real}(lhs::Vector{T},rhs::Vector{R}) = $sgn(lhs,convert(Vector{AffExpr},rhs))
-#         $sgn{T<:JuMPTypes,R<:Real}(lhs::Vector{R},rhs::Vector{T}) = $sgn(convert(Vector{AffExpr},lhs),rhs)
-#         $sgn{T<:JuMPTypes}(lhs::Vector{T},rhs::Real) = $sgn(lhs,[AffExpr(rhs) for _ in 1:length(lhs)])
-#         $sgn{T<:JuMPTypes}(lhs::Real,rhs::Vector{T}) = $sgn([AffExpr(lhs) for _ in 1:length(rhs)],rhs)
-#         $sgn{T<:JuMPTypes}(lhs::Real,rhs::Array{T}) = $sgn(lhs, vec(rhs))
-#         $sgn{T<:JuMPTypes}(lhs::Array{T},rhs::Real) = $sgn(rhs, vec(lhs))
-#         $sgn{T<:JuMPTypes,R<:JuMPTypes}(lhs::Array{T},rhs::Array{R}) = $sgn(vec(lhs), vec(rhs))
-#     end
-# end
 
 ###############################################################################
 # Add nonlinear function fallbacks for JuMP built-in types

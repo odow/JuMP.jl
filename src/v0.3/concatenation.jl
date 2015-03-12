@@ -2,15 +2,15 @@ import Base: promote_rule, promote_type, cat_t, hcat, vcat, hvcat, cat
 
 type DummyJuMPArray end
 
-# Base.promote_rule{T<:OneIndexedArray}(::Type{T},::Type{Union()}) = DummyJuMPArray
-# Base.promote_rule{T<:OneIndexedArray,S<:OneIndexedArray}(::Type{T},::Type{S}) = DummyJuMPArray
-# Base.promote_rule{T<:OneIndexedArray,S}(::Type{T},::Type{S}) = DummyJuMPArray
+Base.promote_rule{T<:OneIndexedArray}(::Type{T},::Type{Union()}) = DummyJuMPArray
+Base.promote_rule{T<:OneIndexedArray,S<:OneIndexedArray}(::Type{T},::Type{S}) = DummyJuMPArray
+Base.promote_rule{T<:OneIndexedArray,S}(::Type{T},::Type{S}) = DummyJuMPArray
 
-# Base.promote_type{T<:OneIndexedArray}(::Type{T},::Type{Union()}) = DummyJuMPArray
-# Base.promote_type{T<:OneIndexedArray}(::Type{Union()},::Type{T}) = DummyJuMPArray
-# Base.promote_type{T<:OneIndexedArray}(::Type{T},::Type{T}) = DummyJuMPArray
-# Base.promote_type{T<:OneIndexedArray,S<:OneIndexedArray}(::Type{T},::Type{S}) = DummyJuMPArray
-# Base.promote_type{T<:OneIndexedArray,S}(::Type{T},::Type{S}) = DummyJuMPArray
+Base.promote_type{T<:OneIndexedArray}(::Type{T},::Type{Union()}) = DummyJuMPArray
+Base.promote_type{T<:OneIndexedArray}(::Type{Union()},::Type{T}) = DummyJuMPArray
+Base.promote_type{T<:OneIndexedArray}(::Type{T},::Type{T}) = DummyJuMPArray
+Base.promote_type{T<:OneIndexedArray,S<:OneIndexedArray}(::Type{T},::Type{S}) = DummyJuMPArray
+Base.promote_type{T<:OneIndexedArray,S}(::Type{T},::Type{S}) = DummyJuMPArray
 
 AffExpr(v::Variable) = AffExpr(Variable[v], Float64[1], 0.0)
 AffExpr(aff::AffExpr) = copy(aff)

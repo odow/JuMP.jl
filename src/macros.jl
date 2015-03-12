@@ -157,26 +157,19 @@ end
 _construct_constraint!(quad::QuadExpr, sense::Symbol) = QuadConstraint(quad, sense)
 
 _construct_constraint!(x::Array, sense::Symbol) = map(c->_construct_constraint!(c,sense), x)
-_construct_constraint!(x::Array{AffExpr}, lb::Number, ub::Number) = map(c->_construct_constraint!(c,lb,ub), x)
-function _construct_constraint!{R<:Number}(x::Array{AffExpr}, lb::Array{R}, ub::Number)
-    (size(x,1) == size(lb,1) && size(x,2) == size(lb,2) && length(x) == length(lb)) ||
-        error("Unequal size for ranged constraint")
-    return map(1:length(x)) do i
-        _construct_constraint!(x[i],lb[i],ub)
-    end
+
+_vectorize(x::Number, n::Int) = fill(x, n)
+function _vectorize{R<:Number}(x::Array{R}, n::Int)
+    length(x) == n || error("Unequal sizes for ranged constraint")
+    return x
 end
-function _construct_constraint!{R<:Number}(x::Array{AffExpr}, lb::Number, ub::Array{R})
-    (size(x,1) == size(ub,1) && size(x,2) == size(ub,2) && length(x) == length(ub)) ||
-        error("Unequal size for ranged constraint")
+
+function _construct_constraint!(x::Array{AffExpr}, lb, ub)
+    n = length(x)
+    LB = _vectorize(lb,n)
+    UB = _vectorize(ub,n)
     return map(1:length(x)) do i
-        _construct_constraint!(x[i],lb,ub[i])
-    end
-end
-function _construct_constraint!{R<:Number,S<:Number}(x::Array{AffExpr}, lb::Array{R}, ub::Array{S})
-    (size(x,1) == size(lb,1) == size(ub,1) && size(x,2) == size(lb,2) == size(ub,2) && length(x) == length(lb) == length(ub)) ||
-        error("Unequal size for ranged constraint")
-    return map(1:length(x)) do i
-        _construct_constraint!(x[i],lb[i],ub[i])
+        _construct_constraint!(x[i], LB[i], UB[i])
     end
 end
 
