@@ -311,51 +311,31 @@ function multiply!(ret, A, x)
     return ret
 end
 
-function multiply!(ret::Array{AffExpr}, lhs, rhs)
-    m, n = size(lhs,1), size(lhs,2)
-    r, s = size(rhs,1), size(rhs,2)
-    n == r || error("Incompatible dimensions")
-    p, q = size(ret,1), size(ret,2)
-    (p == m && q == s) || error("Incompatible dimensions")
-    for i in 1:m, j in 1:s
-        aff = AffExpr()
-        sizehint!(aff.vars, n)
-        sizehint!(aff.coeffs, n)
-        for k in 1:n
-            tmp = convert(AffExpr, lhs[i,k]*rhs[k,j])
-            if !_iszero(tmp)
-                append!(aff.coeffs, tmp.coeffs)
-                append!(aff.vars, tmp.vars)
-                aff.constant += tmp.constant
-            end
-        end
-        ret[i,j] = aff
-    end
-    return ret
+_sizehint_expr(q::AffExpr, n::Int) = begin
+        sizehint!(q.vars, n)
+        sizehint!(q.coeffs, n)
 end
 
-function multiply!(ret::Array{QuadExpr}, lhs, rhs)
+_sizehint_expr(q::QuadExpr, n::Int) = begin
+        sizehint!(q.qvars1, n)
+        sizehint!(q.qvars2, n)
+        sizehint!(q.qcoeffs, n)
+        _sizehint_expr(q.aff, n)
+end
+
+function multiply!{T<:Union(GenericAffExpr,GenericQuadExpr)}(ret::Array{T}, lhs, rhs)
     m, n = size(lhs,1), size(lhs,2)
     r, s = size(rhs,1), size(rhs,2)
     n == r || error("Incompatible dimensions")
     p, q = size(ret,1), size(ret,2)
     (p == m && q == s) || error("Incompatible dimensions")
     for i in 1:m, j in 1:s
-        q = QuadExpr()
-        sizehint!(q.qvars2, n)
-        sizehint!(q.qvars2, n)
-        sizehint!(q.qcoeffs, n)
-        sizehint!(q.aff.vars, n)
-        sizehint!(q.aff.coeffs, n)
+        q = T()
+        _sizehint_expr(q, n)
         for k in 1:n
-            tmp = convert(QuadExpr, lhs[i,k]*rhs[k,j])
+            tmp = convert(T, lhs[i,k]*rhs[k,j])
             if !_iszero(tmp)
-                append!(q.qvars1, tmp.qvars1)
-                append!(q.qvars2, tmp.qvars2)
-                append!(q.qcoeffs, tmp.qcoeffs)
-                append!(q.aff.coeffs, tmp.aff.coeffs)
-                append!(q.aff.vars, tmp.aff.vars)
-                q.aff.constant += tmp.aff.constant
+                append!(q, tmp)
             end
         end
         ret[i,j] = q
@@ -363,14 +343,45 @@ function multiply!(ret::Array{QuadExpr}, lhs, rhs)
     return ret
 end
 
+function multiply!{T<:Union(GenericAffExpr,GenericQuadExpr)}(ret::Array{T}, lhs::SparseMatrixCSC, rhs)
+    m, n = size(lhs,1), size(lhs,2)
+    r, s = size(rhs,1), size(rhs,2)
+    n == r || error("Incompatible dimensions")
+    p, q = size(ret,1), size(ret,2)
+    (p == m && q == s) || error("Incompatible dimensions")
+    for i in 1:m, j in 1:s
+        q = T()
+        _sizehint_expr(q, n)
+        # for k in 1:n
+        for k in lhs.colptr[i]:lhs.colptr[i+1]
+            tmp = convert(T, lhs.nzval[k]*rhs[lhs.rowval[k],j])
+            if !_iszero(tmp)
+                append!(q, tmp)
+            end
+        end
+        ret[i,j] = q
+    end
+    return ret
+end
+
+# Not sure how/why you'd make a sparse matrix with Variables...
+multiply!{T<:Union(GenericAffExpr,GenericQuadExpr)}(ret::Array{T}, lhs::SparseMatrixCSC, rhs::SparseMatrixCSC) =
+    multiply!(ret, lhs, full(rhs))
+
+function multiply!{T<:Union(GenericAffExpr,GenericQuadExpr)}(ret::Array{T}, lhs, rhs::SparseMatrixCSC)
+    tmp = Array(T, size(ret,2), size(ret,1))
+    multiply!(tmp, rhs', lhs')
+    copy!(ret, tmp')
+    ret
+end
+
 typealias JuMPTypes Union(Variable,AffExpr,QuadExpr)
 
-(*)(lhs::AbstractArray, rhs::OneIndexedArray) = (*)(full(lhs), rhs.innerArray)
-(*)(lhs::OneIndexedArray, rhs::AbstractArray) = (*)(lhs.innerArray, full(rhs))
-(*){T<:JuMPTypes}(lhs::SparseMatrixCSC, rhs::Array{T}) = (*)(full(lhs),rhs)
-(*){T<:JuMPTypes}(lhs::Array{T}, rhs::SparseMatrixCSC) = (*)(lhs,full(rhs))
+(*)(lhs::AbstractArray, rhs::OneIndexedArray) = (*)(lhs, rhs.innerArray)
+(*)(lhs::OneIndexedArray, rhs::AbstractArray) = (*)(lhs.innerArray, rhs)
+(*)(lhs::OneIndexedArray, rhs::OneIndexedArray) = (*)(lhs.innerArray, rhs.innerArray)
 
-function return_array{R,S}(A::Array{R}, x::Array{S,1})
+function return_array{R,S}(A::AbstractArray{R}, x::AbstractArray{S,1})
     Q = (R <: JuMPTypes && S <: JuMPTypes) ? QuadExpr : AffExpr
     m, n = size(A,1), size(A,2)
     r, s = size(x,1), size(x,2)
@@ -378,7 +389,7 @@ function return_array{R,S}(A::Array{R}, x::Array{S,1})
     return Array(Q, m)
 end
 
-function return_array{R,S}(A::Array{R}, x::Array{S,2})
+function return_array{R,S}(A::AbstractArray{R}, x::AbstractArray{S,2})
     Q = (R <: JuMPTypes && S <: JuMPTypes) ? QuadExpr : AffExpr
     m, n = size(A,1), size(A,2)
     r, s = size(x,1), size(x,2)
@@ -386,20 +397,20 @@ function return_array{R,S}(A::Array{R}, x::Array{S,2})
     return Array(Q, m, s)
 end
 
-function (*){T<:JuMPTypes,R}(A::Array{T}, x::Array{R})
+function (*){T<:JuMPTypes}(A::Array{T}, x::Union(Array,SparseMatrixCSC))
     ret = return_array(A, x)
     multiply!(ret, A, x)
     return ret
 end
 
 function (*){T<:JuMPTypes,R<:JuMPTypes}(A::Array{T}, x::Array{R})
-    (T == QuadExpr || R == QuadExpr) && error("Cannot multiply two arrays of QuadExpr")
+    (eltype(A) == QuadExpr || eltype(R) == QuadExpr) && error("Cannot multiply two arrays of QuadExpr")
     ret = return_array(A, x)
     multiply!(ret, A, x)
     return ret
 end
 
-function (*){T,R<:JuMPTypes}(A::Array{T}, x::Array{R})
+function (*){T<:JuMPTypes}(A::Union(Array,SparseMatrixCSC), x::Array{T})
     ret = return_array(A, x)
     multiply!(ret, A, x)
     return ret
@@ -412,8 +423,8 @@ for op in [:+, :-, :*]
         $op(lhs::Real,rhs::OneIndexedArray) = $op(lhs, rhs.innerArray)
         $op(lhs::OneIndexedArray,rhs::Real) = $op(lhs.innerArray, rhs)
 
-        $op{T<:JuMPTypes,N}(lhs::Array{T,N},rhs::OneIndexedArray) = $op(lhs,rhs.innerArray)
-        $op{T<:JuMPTypes,N}(lhs::OneIndexedArray,rhs::Array{T,N}) = $op(lhs.innerArray,rhs)
+        $op{T<:JuMPTypes}(lhs::Array{T},rhs::OneIndexedArray) = $op(lhs,rhs.innerArray)
+        $op{T<:JuMPTypes}(lhs::OneIndexedArray,rhs::Array{T}) = $op(lhs.innerArray,rhs)
         $op(lhs::OneIndexedArray,rhs::OneIndexedArray) = $op(lhs.innerArray,rhs.innerArray)
     end
 end
@@ -421,7 +432,7 @@ end
 (/){T<:JuMPTypes}(lhs::Array{T},rhs::Real) = map(c->$op(c,rhs), lhs)
 (/)(lhs::OneIndexedArray,rhs::Real) = $op(lhs.innerArray, rhs)
 
-for (dotop,op) in [(:.+,:+), (:.-,:-), (:.*,:*), (:./,:+)]
+for (dotop,op) in [(:.+,:+), (:.-,:-), (:.*,:*), (:./,:/)]
     @eval begin
         $dotop(lhs::Real,rhs::JuMPTypes) = $op(lhs,rhs)
         $dotop(lhs::JuMPTypes,rhs::Real) = $op(rhs,rhs)

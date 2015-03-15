@@ -322,6 +322,7 @@ function Base.append!{T,S}(aff::GenericAffExpr{T,S}, other::GenericAffExpr{T,S})
     append!(aff.vars, other.vars)
     append!(aff.coeffs, other.coeffs)
     aff.constant += other.constant  # Not efficient if CoefType isn't immutable
+    aff
 end
 
 # Copy an affine expression
@@ -333,7 +334,6 @@ typealias AffExpr GenericAffExpr{Float64,Variable}
 AffExpr() = AffExpr(Variable[],Float64[],0.0)
 
 Base.isempty(a::AffExpr) = (length(a.vars) == 0 && a.constant == 0.)
-# Base.convert(::Type{AffExpr}, v::Variable) = AffExpr(Variable[v], [1.], 0.)
 Base.convert(::Type{AffExpr}, v::Variable) = AffExpr([v], [1.], 0.)
 Base.convert(::Type{AffExpr}, v::Real) = AffExpr(Variable[], Float64[], v)
 
@@ -383,6 +383,14 @@ Base.zero(q::GenericQuadExpr) = zero(typeof(q))
 Base.one(q::GenericQuadExpr)  = one(typeof(q))
 
 Base.convert(::Type{QuadExpr}, v::Union(Real,Variable,AffExpr)) = QuadExpr(Variable[], Variable[], Float64[], AffExpr(v))
+
+function Base.append!{T,S}(q::GenericQuadExpr{T,S}, other::GenericQuadExpr{T,S})
+    append!(q.qvars1, other.qvars1)
+    append!(q.qvars2, other.qvars2)
+    append!(q.qcoeffs, other.qcoeffs)
+    append!(q.aff, other.aff)
+    q
+end
 
 function assert_isfinite(q::GenericQuadExpr)
     assert_isfinite(q.aff)
