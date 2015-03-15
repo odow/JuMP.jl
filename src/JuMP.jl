@@ -144,15 +144,8 @@ end
 setObjective(m::Model, something::Any) =
     error("in setObjective: needs three arguments: model, objective sense (:Max or :Min), and expression.")
 
-# # Hacky little fallbacks so that arrays of length 1 act as scalars for adding constraints and setting objective
-# function setObjective(m::Model, sense::Symbol, x::Array)
-#     length(x) == 1 || error("in setObjective: no support for vectorized objective of size $(size(x))")
-#     setObjective(m, sense, x[1])
-# end
-# function addConstraint(m::Model, x::Array)
-#     length(x) == 1 || error("in addConstraint: vectorized constraints of size $(size(x)) must used elementwise 'dot' comparison operators (.>=, .<=, .==)")
-#     addConstraint(m, x[1])
-# end
+setObjective(::Model, ::Symbol, x::Array) =
+    error("in setObjective: array of size $(size(x)) passed as objective; only scalar objectives are allowed")
 
 function setSolver(m::Model, solver::MathProgBase.AbstractMathProgSolver)
     m.solver = solver
@@ -340,7 +333,8 @@ typealias AffExpr GenericAffExpr{Float64,Variable}
 AffExpr() = AffExpr(Variable[],Float64[],0.0)
 
 Base.isempty(a::AffExpr) = (length(a.vars) == 0 && a.constant == 0.)
-Base.convert(::Type{AffExpr}, v::Variable) = AffExpr(Variable[v], [1.], 0.)
+# Base.convert(::Type{AffExpr}, v::Variable) = AffExpr(Variable[v], [1.], 0.)
+Base.convert(::Type{AffExpr}, v::Variable) = AffExpr([v], [1.], 0.)
 Base.convert(::Type{AffExpr}, v::Real) = AffExpr(Variable[], Float64[], v)
 
 function assert_isfinite(a::AffExpr)

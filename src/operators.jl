@@ -261,33 +261,36 @@ function Base.dot{N}(lhs::JuMPArray{Float64,N},rhs::JuMPArray{Float64,N})
     return sum(lhs.innerArray .* rhs.innerArray)
 end
 
-Base.promote_type(::Type{Variable},::Type{Union()})  = Variable
-Base.promote_type(::Type{Union()},::Type{Variable})  = Variable
+for func in [:(Base.promote_type), :(Base.promote_rule)]
+    @eval begin
+        $func(::Type{Variable},::Type{Union()})  = Variable
+        $func(::Type{Union()},::Type{Variable})  = Variable
 
-Base.promote_type{R<:Real}(::Type{Variable},::Type{R})  = AffExpr
-Base.promote_type{R<:Real}(::Type{R},::Type{Variable})  = AffExpr
+        $func{R<:Real}(::Type{Variable},::Type{R})  = AffExpr
+        $func{R<:Real}(::Type{R},::Type{Variable})  = AffExpr
 
-Base.promote_type(::Type{Variable},::Type{AffExpr})  = AffExpr
-Base.promote_type(::Type{AffExpr},::Type{Variable})  = AffExpr
+        $func(::Type{Variable},::Type{AffExpr})  = AffExpr
+        $func(::Type{AffExpr},::Type{Variable})  = AffExpr
 
-Base.promote_type(::Type{Variable},::Type{QuadExpr}) = QuadExpr
-Base.promote_type(::Type{QuadExpr},::Type{Variable}) = QuadExpr
+        $func(::Type{Variable},::Type{QuadExpr}) = QuadExpr
+        $func(::Type{QuadExpr},::Type{Variable}) = QuadExpr
 
-Base.promote_type(::Type{AffExpr},::Type{Union()})  = AffExpr
-Base.promote_type(::Type{Union()},::Type{AffExpr})  = AffExpr
+        $func(::Type{AffExpr},::Type{Union()})  = AffExpr
+        $func(::Type{Union()},::Type{AffExpr})  = AffExpr
 
-Base.promote_type{R<:Real}(::Type{AffExpr},::Type{R})   = AffExpr
-Base.promote_type{R<:Real}(::Type{R},::Type{AffExpr})   = AffExpr
+        $func{R<:Real}(::Type{AffExpr},::Type{R})   = AffExpr
+        $func{R<:Real}(::Type{R},::Type{AffExpr})   = AffExpr
 
-Base.promote_type(::Type{AffExpr},::Type{QuadExpr}) = QuadExpr
-Base.promote_type(::Type{QuadExpr},::Type{AffExpr}) = QuadExpr
+        $func(::Type{AffExpr},::Type{QuadExpr}) = QuadExpr
+        $func(::Type{QuadExpr},::Type{AffExpr}) = QuadExpr
 
-Base.promote_type(::Type{QuadExpr},::Type{Union()})  = QuadExpr
-Base.promote_type(::Type{Union()},::Type{QuadExpr})  = QuadExpr
+        $func(::Type{QuadExpr},::Type{Union()})  = QuadExpr
+        $func(::Type{Union()},::Type{QuadExpr})  = QuadExpr
 
-Base.promote_type{R<:Real}(::Type{QuadExpr},::Type{R})  = QuadExpr
-Base.promote_type{R<:Real}(::Type{R},::Type{QuadExpr})  = QuadExpr
-
+        $func{R<:Real}(::Type{QuadExpr},::Type{R})  = QuadExpr
+        $func{R<:Real}(::Type{R},::Type{QuadExpr})  = QuadExpr
+    end
+end
 _throw_transpose_error() = error("Transpose not currently implemented for JuMPArrays with arbitrary index sets.")
 
 Base.transpose(x::OneIndexedArray)  = transpose(x.innerArray)

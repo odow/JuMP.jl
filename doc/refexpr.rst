@@ -133,12 +133,11 @@ Vectorized operations
 ^^^^^^^^^^^^^^^^^^^^^
 
 JuMP supports vectorized expressions and constraints for linear and quadratic models. Although this syntax may
-be familiar for users coming from other modeling languages, we caution that this syntax can be slow---especially
-for large operations---and that it often can destroy the sparse, algebraic structure that makes modeling
-languages useful. Nevertheless, the syntax often proves useful, for example in constraints involving small,
+be familiar for users coming from MATLAB-based modeling languages, we caution that this syntax can be slow---especially
+for large operations. Nevertheless, the syntax often proves useful, for example in constraints involving small,
 dense matrix-vector products.
 
-Linear algebraic operators have been added to give meaning to expressions like ``A*x`` where ``A`` is a matrix
+Linear algebraic operators are available to give meaning to expressions like ``A*x`` where ``A`` is a matrix
 of numbers and ``x`` is a vector of ``Variable``s. You may also use ``JuMPArray``s in these types of expressions,
 but only if the index sets that define them are matrix-like: that is, the index sets are ranges of the type
 ``1:n``. For example::

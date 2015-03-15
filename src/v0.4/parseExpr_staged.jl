@@ -122,10 +122,6 @@ function addToExpression(ex::QuadExpr, c::AffExpr, x::AffExpr)
     return addToExpression(ex, 1.0, q)
 end
 
-# addToExpression(x, c) = addToExpression(x, 1.0, c)
-
-# addToExpression(aff, c, x) = error("Cannot construct an affine expression with a term of type ($(typeof(c)))*($(typeof(x)))")
-
 include(joinpath("..","vectorized_macros_overloads.jl"))
 
 stagedfunction addToExpression_reorder(ex, arg)
@@ -142,9 +138,6 @@ stagedfunction addToExpression_reorder(ex, args...)
     # has_vect = any(t -> (t <: Array), args)
     if n_var == 0 && !has_quad
         #println("No variables")
-        # println(:(addToExpression(ex, 1.0, (*)(args...))))
-        # println("ex = $ex")
-        # println("args = $args")
         return :(addToExpression(ex, 1.0, (*)(args...)))
     elseif n_var == 1 && !has_quad # linear
         #println("Linear")
@@ -158,13 +151,10 @@ stagedfunction addToExpression_reorder(ex, args...)
                 push!(coef_expr.args, :(args[$i]))
             end
         end
-        # println(:(addToExpression(ex, $coef_expr, args[$var_idx])))
         return :(addToExpression(ex, $coef_expr, args[$var_idx]))
     else
         #println("Nonlinear")
-        # fall back
         coef_expr = Expr(:call, :*, [:(args[$i]) for i in 1:(length(args)-1)]...)
-        # println(:(addToExpression(ex, $coef_expr, args[$(length(args))])))
         return :(addToExpression(ex, $coef_expr, args[$(length(args))]))
     end
 
@@ -279,8 +269,6 @@ function parseExpr(x, aff::Symbol, lcoeffs::Vector, rcoeffs::Vector, newaff::Sym
             # (x+y)*(x+y)
             n_expr = mapreduce(is_complex_expr, +, x.args)
             if n_expr == 1 # special case, only recurse on one argument and don't create temporary objects
-                # lcoeffs = Any[c for c in lcoeffs]
-                # rcoeffs = Any[c for c in rcoeffs]
                 which_idx = 0
                 for i in 2:length(x.args)
                     if is_complex_expr(x.args[i])
