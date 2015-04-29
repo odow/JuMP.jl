@@ -29,6 +29,7 @@ export
     writeLP, writeMPS, setObjective,
     addConstraint, addSOS1, addSOS2, solve,
     getInternalModel, buildInternalModel, setSolveHook, setPrintHook,
+    fixedmodel,
     # Variable
     setName, getName, setLower, setUpper, getLower, getUpper,
     getValue, setValue, getDual, setCategory, getCategory,

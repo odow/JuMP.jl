@@ -89,3 +89,22 @@ Modifying nonlinear models
 
 See :ref:`Nonlinear performance <nonlinearprobmod>`.
 
+Fixing integer variables
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For some applications it is desirable to get dual information from a model containing integer variables. One way to approximate the duals is to assume that for small changes in your continuous variables, the optimal values of integer variables will not change. Firstly, solve the model with the integer constraints. Then, using the optimal solution, fix all the integer variables to their optimal value and relax the integer constraints. The 'fixed' model can then be solved as a standard LP to obtain the dual values. The ``fixedmodel(m::Model)`` method returns a copy of the model `m` that has been 'fixed'. e.g.::
+
+    m = Model()
+    # model definition with integer variables
+    solve(m)
+    f = fixedmodel(m)
+    solve(f)
+    getDual(...)
+  
+You can also solve the Integer program using an integer solver, and then specify a different LP solver to use when solving the fixed model. i.e.::
+
+    f = fixedmodel(m, solver=ClpSolver())
+
+Calling `fixedmodel(m)` on an unsolved model will return an error.
+
+When 'fixing' Special Ordered Sets, `fixedmodel` follows the example set by Gurobi. For a SOSI, the non-zero element is left free, while the other elements are fixed to be zero. For a SOSII, the two non-zero elements are left free, while the other elements are fixed to be zero. If there is only one non-zero element, then that element, and the next element (in the positive direction of the weighting) are left free. If there is only one non-zero element, and it is the last element in the set, then that element, and the preceeding element are left free.

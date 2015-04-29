@@ -431,3 +431,59 @@ function merge_duplicates{CoefType,IntType<:Integer}(::Type{IntType},aff::Generi
     return indices, coeffs
 
 end
+
+function fixedmodel(m::Model; solver=UnsetSolver())
+    for v in m.colVal
+        if isnan(v)
+            error("Unable to fix an unsolved model")
+        end
+    end
+    f = copy(m)
+    # Follow what Gurobi does for Special Ordered Sets
+    for sos in m.sosconstr
+        cols = Int[v.col for v in sos.terms]
+        if sos.sostype == :SOS1
+            for c in cols
+                if abs(m.colVal[c]) >= 1e-10
+                    for i in cols
+                        if i!=c
+                            setLower(Variable(f, i), 0)
+                            setUpper(Variable(f, i), 0)
+                        end
+                    end
+                    break
+                end
+            end
+        elseif sos.sostype == :SOS2
+            colorder = sortperm(sos.weights)
+            for (i, sosidx) in enumerate(colorder)
+                c = cols[sosidx]
+                if abs(m.colVal[c]) >= 1e-10
+                    for j in cols
+                        if j!=c && j != cols[colorder[i+(i==length(cols) ? -1 : 1)]]
+                            setLower(Variable(f, j), 0)
+                            setUpper(Variable(f, j), 0)
+                        end
+                    end
+                    break
+                end
+            end         
+        end
+    end
+
+    # Fix all integer variables to their current solution value
+    for (i, v) in enumerate(m.colCat)
+        setCategory(Variable(f, i), :Cont)
+        if v == :Bin || v == :Int || v == :SemiInt || (v == :SemiCont && abs(m.colVal[i]) < 1e-10)
+            setLower(Variable(f, i), m.colVal[i])
+            setUpper(Variable(f, i), m.colVal[i])
+        end
+    end
+
+    # Change solver if user asks
+    if !isa(solver, typeof(m.solver)) && !isa(solver, UnsetSolver)
+        setSolver(f, solver)
+    end
+
+    return f
+end

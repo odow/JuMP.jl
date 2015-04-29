@@ -317,3 +317,43 @@ if mos
 end
 
 end
+
+facts("[probmod] Testing fixedmodel") do
+
+    if cbc
+        m = Model(solver=Cbc.CbcSolver())
+    else
+        m = Model()
+    end
+    @defVar(m, 0 <= x <= 1)
+    @defVar(m, y >= 0)
+    @defVar(m, s[1:5] >= 0)
+    @defVar(m, z, Bin)
+    
+    @setObjective(m, :Max, y + z)
+    
+    @addConstraint(m, sum(s) == 1)
+    if cbc
+        # Cbc only open-source solver that is SOS capable via JuMP
+        addSOS2(m, [i * s[i] for i=1:5])
+    end
+    @addConstraint(m, x == sum([0.25 * (i-1) * s[i] for i=1:5]))
+    @addConstraint(m, y == sum([(1 - (0.25 * (i-1) - 0.5)^2) * s[i] for i=1:5]))
+    c = @addConstraint(m, x == 0.4)
+    
+    solve(m)
+    
+    if cbc
+        f = fixedmodel(m, solver=Clp.ClpSolver())
+    else
+        f = fixedmodel(m)
+        # let JuMP choose a linear solver
+        setSolver(f, JuMP.UnsetSolver())
+    end
+
+    solve(f)
+    
+    @fact getValue(x) => roughly(0.4)
+    @fact f.linconstrDuals[c.idx] => roughly(0.25)
+
+end
